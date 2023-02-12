@@ -1,4 +1,6 @@
 import Controller.SocialMediaController;
+import Model.Account;
+import Service.SocialMediaService;
 import io.javalin.Javalin;
 
 /**
@@ -7,8 +9,16 @@ import io.javalin.Javalin;
  */
 public class Main {
     public static void main(String[] args) {
-        SocialMediaController controller = new SocialMediaController();
-        Javalin app = controller.startAPI();
-        app.start(8080);
+        //SocialMediaController controller = new SocialMediaController();
+        //Javalin app = controller.startAPI();
+        //app.start(8080);
+
+        String username = "NEW_USER";
+        String password = "1234";
+        SocialMediaService service = SocialMediaService.getService();
+        service.registerAccount(username, password);
+        Account acc_test = service.login(username, password);
+        System.out.println(acc_test);
+
     }
 }
