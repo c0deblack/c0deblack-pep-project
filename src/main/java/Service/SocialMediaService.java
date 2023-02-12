@@ -1,13 +1,12 @@
 package Service;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
 
 import DAO.AccountDAO;
 import DAO.MessageDAO;
@@ -51,33 +50,37 @@ public class SocialMediaService {
     {
         return accountDAO.getMatchingUserPassCombo(username, password);
     }
+    public boolean userExists(String username)
+    {
+        return accountDAO.userExists(username);
+    }
 
 
 
     /*****************************************************
      * Message Services
      *****************************************************/
-    List<Message> getMessages()
+    public List<Message> getMessages()
     {
         return messageDAO.getAllMessages();
     }
-    List<Message> getMessages(int id)
+    public List<Message> getMessages(int id)
     {
         return messageDAO.getMessagesByAccountId(id);
     }
-    Message getMessage(int id)
+    public Message getMessage(int id)
     {
         return messageDAO.getMessageById(id);
     }
-    Message updateMessage(int id, Message newMsg)
+    public Message updateMessage(int id, Message newMsg)
     {
         return messageDAO.updateMessageById(id, newMsg);
     }
-    Message deleteMessage(int id)
+    public Message deleteMessage(int id)
     {
         return messageDAO.deleteMessageById(id);
     }
-    Message addMessage(Message newMsg)
+    public Message addMessage(Message newMsg)
     {
         return messageDAO.addMessage(newMsg);
     }
@@ -85,19 +88,31 @@ public class SocialMediaService {
     /*****************************************************
      * Utility Database Services
      *****************************************************/
-    public ResultSet query(boolean doUpdate, String query, Object ...args)
+    public void 
+    resetDB()
     {
-        try(Connection connection = ConnectionUtil.getConnection())
+        ConnectionUtil.resetTestDatabase();
+    }
+
+    public CachedRowSet 
+    getCachedRowSet(String query) throws SQLException
+    {
+        RowSetFactory factory = RowSetProvider.newFactory();
+        CachedRowSet rowSet = factory.createCachedRowSet();
+        rowSet.setCommand(query);
+        rowSet.setUsername("sa");
+        rowSet.setPassword("sa");
+        rowSet.setUrl("jdbc:h2:./h2/db");
+
+        return rowSet;
+    }
+
+    public CachedRowSet 
+    query(boolean doUpdate, String query, Object ...args)
+    {
+        try
         {
-            // use different statements for update and execute queries
-            PreparedStatement preparedStatement;
-            if(doUpdate == false) 
-            {
-                preparedStatement = connection.prepareStatement(query);
-            } else 
-            {
-                preparedStatement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-            }
+            CachedRowSet rowSet = this.getCachedRowSet(query);
             
             // add positional arguments to the statemnet
             if(args.length > 0)
@@ -107,26 +122,20 @@ public class SocialMediaService {
                     int position = index + 1;
                     if(args[index] instanceof String)
                     {
-                        preparedStatement.setString(position, (String)args[index]);
+                        rowSet.setString(position, (String)args[index]);
                     }
                     if(args[index] instanceof Integer)
                     {
-                        preparedStatement.setInt(position, (Integer)args[index]);
+                        rowSet.setInt(position, (Integer)args[index]);
+                    }
+                    if(args[index] instanceof Long)
+                    {
+                        rowSet.setLong(position, (Long)args[index]);
                     }
                 }
             }
-
-            if(doUpdate == false)
-            {
-                ResultSet result = preparedStatement.executeQuery();
-                return result;
-            } else
-            {
-                int update_result = preparedStatement.executeUpdate();
-                ResultSet result = preparedStatement.getGeneratedKeys();
-                return result;
-            }
-
+            rowSet.execute();
+            return rowSet;
         } 
         catch (SQLException sqle)
         {
@@ -135,11 +144,14 @@ public class SocialMediaService {
         return null;
     }
 
-    public ResultSet updateQuery(String query, Object ...args)
+    public CachedRowSet 
+    updateQuery(String query, Object ...args)
     {
         return this.query(true, query, args);
     }
-    public ResultSet execQuery(String query, Object ...args)
+
+    public CachedRowSet 
+    execQuery(String query, Object ...args)
     {
         return this.query(false, query, args);
     }
@@ -150,7 +162,8 @@ public class SocialMediaService {
      * @param accountResult
      * @return Account
      */
-    public Account parseAccountResultSet(ResultSet accountResult)
+    public Account 
+    parseAccountResultSet(CachedRowSet accountResult)
     {
         try
         {
@@ -170,12 +183,8 @@ public class SocialMediaService {
         return null;
     }
 
-    /**
-     * Helper function that gets a list of one or more messages from a result set.
-     * @param accountResult
-     * @return
-     */
-    List<Message> parseMessgeResults(ResultSet accountResult)
+    public List<Message> 
+    parseMessageResults(CachedRowSet accountResult)
     {
         try
         {

@@ -1,0 +1,7 @@
+commit da30e24b5ecd2a2974b4b428309b8c28c7dbf891
+Author: c0deblack <79178809+c0deblack@users.noreply.github.com>
+Date:   Sun Feb 12 13:09:24 2023 +0000
+
+    Issue: Passing ResultSet out of function
+
+ 5 files changed, 320 insertions(+), 3 deletions(-)
