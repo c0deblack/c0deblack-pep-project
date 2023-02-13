@@ -9,6 +9,9 @@ import javax.sql.rowset.RowSetProvider;
 
 import DAO.AccountDAO;
 import DAO.MessageDAO;
+import Exceptions.AccountRegistrationException;
+import Exceptions.MessageAddException;
+import Exceptions.MessageUpdateException;
 import Model.Account;
 import Model.Message;
 import Util.ConnectionUtil;
@@ -39,7 +42,13 @@ public class SocialMediaService {
      *****************************************************/
     public Account registerAccount(String username, String password)
     {
-        return accountDAO.registerAccount(username, password);
+        try
+        {
+            return accountDAO.registerAccount(username, password);
+        } catch (AccountRegistrationException are)
+        {
+            return null;
+        }
     }
     public Account getAccount(int id)
     {
@@ -63,7 +72,7 @@ public class SocialMediaService {
     {
         return messageDAO.getAllMessages();
     }
-    public List<Message> getMessages(int id)
+    public List<Message> getMessagesByUser(int id)
     {
         return messageDAO.getMessagesByAccountId(id);
     }
@@ -73,7 +82,14 @@ public class SocialMediaService {
     }
     public Message updateMessage(int id, Message newMsg)
     {
-        return messageDAO.updateMessageById(id, newMsg);
+        try
+        {
+            return messageDAO.updateMessageById(id, newMsg);
+        }
+        catch (MessageUpdateException mue)
+        {
+            return null;
+        }
     }
     public Message deleteMessage(int id)
     {
@@ -81,7 +97,13 @@ public class SocialMediaService {
     }
     public Message addMessage(Message newMsg)
     {
-        return messageDAO.addMessage(newMsg);
+        try
+        {
+            return messageDAO.addMessage(newMsg);
+        } catch (MessageAddException mae)
+        {
+            return null;
+        }
     }
 
     /*****************************************************

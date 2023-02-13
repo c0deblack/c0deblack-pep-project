@@ -1,7 +1,9 @@
 package Controller;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -35,7 +37,7 @@ public class SocialMediaController {
         app.get("/messages/{message_id}", this::getMessageFromId);
         app.delete("/messages/{message_id}", this::deleteMessageById);
         app.patch("/messages/{message_id}", this::updateMessage);
-        app.get("/{account_id}/messages", this::getMessagesByUser);
+        app.get("/accounts/{account_id}/messages", this::getMessagesByUser);
 
 
         return app;
@@ -152,17 +154,19 @@ public class SocialMediaController {
     updateMessage(Context context) throws JsonMappingException, JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
-        String id = context.pathParam("message_id");
-        Message output = service.deleteMessage(Integer.valueOf(id));
+        Message received = mapper.readValue(context.body(), Message.class);
+        int id = Integer.parseInt(context.pathParam("message_id"));
+        Message output = service.updateMessage(id, received);
 
         if(output == null)
         {
+            context.status(400);
         }
         else 
         {
             context.json(mapper.writeValueAsString(output));
+            context.status(200);
         }
-        context.status(200);
     }
 
 
@@ -172,15 +176,10 @@ public class SocialMediaController {
     {
         ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("account_id");
-        List<Message> output = service.getMessages(Integer.valueOf(id));
+        List<Message> output = service.getMessagesByUser(Integer.parseInt(id));
 
-        if(output == null)
-        {
-        }
-        else 
-        {
-            context.json(mapper.writeValueAsString(output));
-        }
+        context.json(Objects.requireNonNullElseGet(output, () -> new ArrayList<Message>()));
+
         context.status(200);
     }
 }

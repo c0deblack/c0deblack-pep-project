@@ -33,15 +33,14 @@ public class AccountDAO {
             String query = "INSERT INTO account (username, password) VALUES ( ?, ? );";
 
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-                
+
             statement.setString(1, username);
             statement.setString(2, password);
-    
+
             int retVal = statement.executeUpdate();
             ResultSet keys = statement.getGeneratedKeys();
             if(keys.next()) {
                 int account_id  = keys.getInt(1);
-
                 return new Account(account_id, username, password);
             }
         } catch (SQLException sqle)
@@ -60,8 +59,9 @@ public class AccountDAO {
     getAccountInfoById(int id)
     {
         String query = "SELECT * FROM account WHERE account_id = ? ";
-        try (Connection connection = ConnectionUtil.getConnection(); )
+        try
         {
+            Connection connection = ConnectionUtil.getConnection();
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             statement.setInt(1, id);
 
@@ -87,8 +87,9 @@ public class AccountDAO {
     userExists(String username)
     {
         String query = "SELECT * FROM account WHERE username = ?";
-        try (Connection connection = ConnectionUtil.getConnection(); )
+        try
         {
+            Connection connection = ConnectionUtil.getConnection();
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(1, username);
 
@@ -113,8 +114,9 @@ public class AccountDAO {
     {
         SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM account WHERE username = ? AND password = ?";
-        try (Connection connection = ConnectionUtil.getConnection(); )
+        try
         {
+            Connection connection = ConnectionUtil.getConnection();
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             statement.setString(1, username);
             statement.setString(2, password);
