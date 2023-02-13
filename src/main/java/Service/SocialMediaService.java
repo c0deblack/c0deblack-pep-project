@@ -1,11 +1,6 @@
 package Service;
 
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
-
-import javax.sql.rowset.RowSetFactory;
-import javax.sql.rowset.RowSetProvider;
 
 import DAO.AccountDAO;
 import DAO.MessageDAO;
@@ -14,21 +9,39 @@ import Exceptions.MessageAddException;
 import Exceptions.MessageUpdateException;
 import Model.Account;
 import Model.Message;
-import Util.ConnectionUtil;
 
-
+/**
+ * This class interact with the {@link AccountDAO} and {@link MessageDAO} classes directly and
+ * provides a unified interface to multiple data sources.
+ * <br><br>
+ * 
+ * <pre>
+ * {@link SocialMediaService#SocialMediaService()}
+ * {@link SocialMediaService#getService()} 
+ * {@link SocialMediaService#registerAccount(String, String)} 
+ * {@link SocialMediaService#login(String, String)} 
+ * {@link SocialMediaService#getMessages()} 
+ * {@link SocialMediaService#getMessagesByUser(int)} 
+ * {@link SocialMediaService#getMessage(int)} 
+ * {@link SocialMediaService#updateMessage(int, Message)} 
+ * {@link SocialMediaService#deleteMessage(int)} 
+ * {@link SocialMediaService#addMessage(Message)}
+ * </pre>
+ */
 public class SocialMediaService {
     private static AccountDAO accountDAO;
     private static MessageDAO messageDAO;
     private static SocialMediaService instance = null;
 
-    private SocialMediaService()
+    private
+    SocialMediaService()
     {
         accountDAO = new AccountDAO();
         messageDAO = new MessageDAO();
     }
 
-    static public SocialMediaService getService()
+    static public SocialMediaService
+    getService()
     {
         if(instance == null)
         {
@@ -40,7 +53,8 @@ public class SocialMediaService {
     /*****************************************************
      * Account Services
      *****************************************************/
-    public Account registerAccount(String username, String password)
+    public Account
+    registerAccount(String username, String password)
     {
         try
         {
@@ -50,37 +64,34 @@ public class SocialMediaService {
             return null;
         }
     }
-    public Account getAccount(int id)
-    {
-        return accountDAO.getAccountInfoById(id);
-    }
-    public Account login(String username, String password)
+
+    public Account
+    login(String username, String password)
     {
         return accountDAO.getMatchingUserPassCombo(username, password);
     }
-    public boolean userExists(String username)
-    {
-        return accountDAO.userExists(username);
-    }
-
 
 
     /*****************************************************
      * Message Services
      *****************************************************/
-    public List<Message> getMessages()
+    public List<Message>
+    getMessages()
     {
         return messageDAO.getAllMessages();
     }
-    public List<Message> getMessagesByUser(int id)
+    public List<Message>
+    getMessagesByUser(int id)
     {
         return messageDAO.getMessagesByAccountId(id);
     }
-    public Message getMessage(int id)
+    public Message
+    getMessage(int id)
     {
         return messageDAO.getMessageById(id);
     }
-    public Message updateMessage(int id, Message newMsg)
+    public Message
+    updateMessage(int id, Message newMsg)
     {
         try
         {
@@ -91,11 +102,13 @@ public class SocialMediaService {
             return null;
         }
     }
-    public Message deleteMessage(int id)
+    public Message
+    deleteMessage(int id)
     {
         return messageDAO.deleteMessageById(id);
     }
-    public Message addMessage(Message newMsg)
+    public Message
+    addMessage(Message newMsg)
     {
         try
         {
@@ -105,14 +118,4 @@ public class SocialMediaService {
             return null;
         }
     }
-
-    /*****************************************************
-     * Utility Database Services
-     *****************************************************/
-    public void 
-    resetDB()
-    {
-        ConnectionUtil.resetTestDatabase();
-    }
-
 }

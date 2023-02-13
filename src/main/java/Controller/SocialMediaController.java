@@ -1,12 +1,10 @@
 package Controller;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Model.Account;
@@ -16,9 +14,23 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 
 /**
- * TODO: You will need to write your own endpoints and handlers for your controller. The endpoints you will need can be
- * found in readme.md as well as the test cases. You should
- * refer to prior mini-project labs and lecture materials for guidance on how a controller may be built.
+ * This class encapsulates the Javalin Web Server APIs. It defines numerous enpoints and callbacks
+ * for handling use interaction with them.
+ *
+ * <br><br>
+ *
+ * The following endpoints and callbacks are defined:
+ *
+ * <pre>
+ *         app.post("/register", {@link SocialMediaController#register(Context)} );
+ *         app.post("/login", {@link SocialMediaController#login(Context)} );
+ *         app.post("/messages", {@link SocialMediaController#postMessage(Context)} );
+ *         app.get("/messages", {@link SocialMediaController#getMessage(Context)} );
+ *         app.get("/messages/{message_id}", {@link SocialMediaController#getMessageFromId(Context)} );
+ *         app.delete("/messages/{message_id}", {@link SocialMediaController#deleteMessageById(Context)} );
+ *         app.patch("/messages/{message_id}", {@link SocialMediaController#updateMessage(Context)} );
+ *         app.get("/accounts/{account_id}/messages", {@link SocialMediaController#getMessagesByUser(Context)} );
+ * </pre>
  */
 public class SocialMediaController {
     SocialMediaService service = SocialMediaService.getService();
@@ -45,7 +57,7 @@ public class SocialMediaController {
 
     private void 
     register(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         Account recieved = mapper.readValue(context.body(), Account.class);
@@ -62,7 +74,7 @@ public class SocialMediaController {
 
     private void 
     login(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         Account recieved = mapper.readValue(context.body(), Account.class);
@@ -79,7 +91,7 @@ public class SocialMediaController {
 
     private void 
     postMessage(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         Message recieved = mapper.readValue(context.body(), Message.class);
@@ -96,62 +108,48 @@ public class SocialMediaController {
 
     private void 
     getMessage(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         List<Message> output = service.getMessages();
 
-        if(output == null)
-        {
-            context.json(mapper.writeValueAsString(new ArrayList<Message>()));
-        }
-        else 
-        {
-            context.json(mapper.writeValueAsString(output));
-        }
+        context.json(mapper.writeValueAsString(
+                Objects.requireNonNullElseGet(output, () -> new ArrayList<Message>())));
         context.status(200);
     }
 
 
     private void 
     getMessageFromId(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("message_id");
-        Message output = service.getMessage(Integer.valueOf(id));
+        Message output = service.getMessage(Integer.parseInt(id));
 
-        if(output == null)
-        {
-        }
-        else 
-        {
+        if(output != null)
             context.json(mapper.writeValueAsString(output));
-        }
+
         context.status(200);
     }
 
     private void 
     deleteMessageById(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("message_id");
-        Message output = service.deleteMessage(Integer.valueOf(id));
+        Message output = service.deleteMessage(Integer.parseInt(id));
 
-        if(output == null)
-        {
-        }
-        else 
-        {
+        if(output != null)
             context.json(mapper.writeValueAsString(output));
-        }
         context.status(200);
     }
 
 
     private void 
-    updateMessage(Context context) throws JsonMappingException, JsonProcessingException
+    updateMessage(Context context)
+    throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
         Message received = mapper.readValue(context.body(), Message.class);
@@ -171,10 +169,8 @@ public class SocialMediaController {
 
 
     private void 
-    getMessagesByUser(Context context) 
-    throws JsonMappingException, JsonProcessingException
+    getMessagesByUser(Context context)
     {
-        ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("account_id");
         List<Message> output = service.getMessagesByUser(Integer.parseInt(id));
 

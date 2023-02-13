@@ -10,16 +10,29 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import javax.sql.rowset.CachedRowSet;
-
 import Exceptions.GetAllMessagesException;
 import Exceptions.MessageAddException;
 import Exceptions.MessageDeleteException;
 import Exceptions.MessageUpdateException;
 import Model.Message;
-import Service.SocialMediaService;
 import Util.ConnectionUtil;
 
+/**
+ * This class handles interaction with the message table which is modeled by the {@link Message} class.
+ * <br/><br/>
+ * It includes the following methods to get, add, and update messages:
+ *
+ * <br/><br/>
+ *
+ * <pre>
+ * {@link MessageDAO#getAllMessages()}
+ * {@link MessageDAO#getMessagesByAccountId(int)}
+ * {@link MessageDAO#getMessageById(int)}
+ * {@link MessageDAO#addMessage(Message)}
+ * {@link MessageDAO#deleteMessageById(int)}
+ * {@link MessageDAO#updateMessageById(int, Message)}
+ * </pre>
+ */
 public class MessageDAO {
 
     public List<Message> 
@@ -155,7 +168,7 @@ public class MessageDAO {
             statement.setString(2, text);
             statement.setLong(3, time_posted);
 
-            int retVal = statement.executeUpdate();
+            statement.executeUpdate();
             ResultSet keys = statement.getGeneratedKeys();
             if(keys.next()) {
                 int message_id  = keys.getInt(1);
@@ -182,7 +195,7 @@ public class MessageDAO {
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setInt(1, id);
 
-            int retVal = statement.executeUpdate();
+            statement.executeUpdate();
         } catch (SQLException sqle)
         {
             throw new MessageDeleteException("Failed to delete message with ID ["+id+"]: " + sqle.getMessage());
@@ -211,7 +224,7 @@ public class MessageDAO {
             int count = 0;
             if(message_ids.next()) count++;
 
-            msg += Objects.requireNonNullElseGet(this.getAllMessages(), () -> "");
+            msg += Objects.requireNonNullElse(this.getAllMessages(), "");
 
             if(count == 0) throw new MessageUpdateException(msg + "Message ID ["+id+"] does not exist.");
             int message_id      = message_ids.getInt("message_id");
