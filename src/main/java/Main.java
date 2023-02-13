@@ -13,6 +13,21 @@ import io.javalin.Javalin;
  * affect your program in any way and you may write whatever code you like here.
  */
 public class Main {
+    private static void print(Object ...o)
+    {
+        for(Object O : o)
+        {
+            System.out.print(O.toString());
+        }
+    }
+    private static void println(Object ...o)
+    {
+        for(Object O : o)
+        {
+            print(O.toString());
+        }
+        print("\n");
+    }
     public static void main(String[] args) {
         //SocialMediaController controller = new SocialMediaController();
         //Javalin app = controller.startAPI();
@@ -23,6 +38,8 @@ public class Main {
         String password = "1234";
         SocialMediaService service = SocialMediaService.getService();
         service.resetDB();
+
+        println("Print Register Acc Test");
         Account reg_test = service.registerAccount(username, password);
         System.out.println(reg_test);
 
@@ -31,12 +48,14 @@ public class Main {
 
         Message newMsg = new Message(1, "My Message!", System.currentTimeMillis());
 
-        Connection connection = ConnectionUtil.getConnection();
-
+        Main.println("Printed Added Message");
         Message added = service.addMessage(newMsg);
         System.out.println(added);
-        
+
+        Main.println("Print getMessages");
         System.out.println(service.getMessages());
+
+        println("Print Get Message By Id");
         Message retrieved = service.getMessage(1);
         System.out.println(retrieved);
 

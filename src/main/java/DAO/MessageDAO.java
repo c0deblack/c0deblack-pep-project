@@ -11,6 +11,10 @@ import java.util.List;
 
 import javax.sql.rowset.CachedRowSet;
 
+import Exceptions.GetAllMessagesException;
+import Exceptions.MessageAddException;
+import Exceptions.MessageDeleteException;
+import Exceptions.MessageUpdateException;
 import Model.Message;
 import Service.SocialMediaService;
 import Util.ConnectionUtil;
@@ -20,14 +24,13 @@ public class MessageDAO {
     public List<Message> 
     getAllMessages()
     {
-        SocialMediaService service = SocialMediaService.getService();
-        String query = "SELECT * FROM message";
-
-        CachedRowSet result = service.execQuery(query);
-
+        String query = "SELECT * FROM message; ";
         List<Message> msg_list = new ArrayList<>();
+        Connection connection = ConnectionUtil.getConnection();
         try
         {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet result = statement.executeQuery();
             while(result.next())
             {
                 Message returnMessage;
@@ -40,7 +43,7 @@ public class MessageDAO {
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
+            throw new GetAllMessagesException("Failed getting messages: " + sqle.getMessage());
         }
 
         if(msg_list.size() > 0) return msg_list;
@@ -51,13 +54,15 @@ public class MessageDAO {
     public List<Message> 
     getMessagesByAccountId(int id)
     {
-        SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM message WHERE posted_by = ?";
 
-        CachedRowSet result = service.execQuery(query, id);
         List<Message> msg_list = new ArrayList<>();
-        try
+        try(Connection connection = ConnectionUtil.getConnection();)
         {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setInt(1, id);
+
+            ResultSet result = statement.executeQuery();
             while(result.next())
             {
                 Message returnMessage;
@@ -70,7 +75,8 @@ public class MessageDAO {
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
+            String msg = "Failed getting messages owned by Account ID ["+id+"]: ";
+            throw new GetAllMessagesException(msg + sqle.getMessage());
         }
 
         if(msg_list.size() > 0) return msg_list;
@@ -81,16 +87,33 @@ public class MessageDAO {
     public Message 
     getMessageById(int id)
     {
-        SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM message WHERE message_id = ?";
 
-        CachedRowSet result = service.execQuery(query, id);
+        List<Message> msg_list = new ArrayList<>();
+        try(Connection connection = ConnectionUtil.getConnection();)
+        {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setInt(1, id);
 
-        List<Message> added_msg = service.parseMessageResults(result);
+            ResultSet result = statement.executeQuery();
+            while(result.next())
+            {
+                Message returnMessage;
+                returnMessage = new Message(result.getInt("message_id"),
+                        result.getInt("posted_by"),
+                        result.getString("message_text"),
+                        result.getLong("time_posted_epoch"));
+                //return returnMessage;
+                msg_list.add(returnMessage);
+            }
+        } catch (SQLException sqle)
+        {
+            String msg = "Failed getting messages with ID ["+id+"]: ";
+            throw new GetAllMessagesException(msg + sqle.getMessage());
+        }
 
-        if(added_msg == null) return null;
-        if(added_msg.size() == 0) return null;
-        else return added_msg.get(0);
+        if(msg_list.size() > 0) return msg_list.get(0);
+        else return null;
     }
 
 
@@ -99,18 +122,18 @@ public class MessageDAO {
     {
         String query = "INSERT INTO message (posted_by, message_text, time_posted_epoch)"
                      + " VALUES ( ?, ?, ? );";
-        ;
-        try (Connection connection = ConnectionUtil.getConnection())
+        try (Connection connection = ConnectionUtil.restartConnection(); )
         {
+            SocialMediaService service = SocialMediaService.getService();
 
             String text         = newMsg.getMessage_text();
-            Integer posted_by   = newMsg.getPosted_by();
-            Long time_posted    = newMsg.getTime_posted_epoch();
+            int posted_by       = newMsg.getPosted_by();
+            long time_posted    = newMsg.getTime_posted_epoch();
 
-
-            if(text.length() > 255)             return null;
-            if(text.length() == 0)              return null;
-           // if(service.getAccount(posted_by) == null)  return null;
+            String msg = "Failed adding message: ";
+            if(text.length() > 255)             throw new MessageAddException(msg + "Text length too long.");
+            if(text.length() == 0)              throw new MessageAddException(msg + "Text cannot be 0.");
+            //if(service.getAccount(posted_by) == null)  throw new MessageAddException(msg + "Account does not exist.");
 
 
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
@@ -122,16 +145,14 @@ public class MessageDAO {
             int retVal = statement.executeUpdate();
             ResultSet keys = statement.getGeneratedKeys();
             if(keys.next()) {
-                Integer message_id  = keys.getInt(1);
+                int message_id  = keys.getInt(1);
 
-                Message ret_msg = new Message(message_id, posted_by, text, time_posted);
-                return ret_msg;
+                return new Message(message_id, posted_by, text, time_posted);
             }
         }catch (SQLException sqle)
         {
-            sqle.printStackTrace();
+            throw new MessageAddException("Failed to add new message to database: " + sqle.getMessage());
         }
-
         return null;
     }
 
@@ -139,15 +160,20 @@ public class MessageDAO {
     public Message 
     deleteMessageById(int id)
     {
-        SocialMediaService service = SocialMediaService.getService();
         Message msg = this.getMessageById(id);
         if(msg == null) return null;
 
         String query = "DELETE FROM message WHERE message_id = ?";
+        try(Connection connection = ConnectionUtil.getConnection();)
+        {
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setInt(1, id);
 
-        CachedRowSet result = service.execQuery(query, id);
-        if(result == null) return null;
-
+            int retVal = statement.executeUpdate();
+        } catch (SQLException sqle)
+        {
+            throw new MessageDeleteException("Failed to delete message with ID ["+id+"]: " + sqle.getMessage());
+        }
         return msg;
     }
 
@@ -155,13 +181,39 @@ public class MessageDAO {
     public Message 
     updateMessageById(int id, Message newMsg)
     {
-        SocialMediaService service = SocialMediaService.getService();
         String query = "UPDATE message set message_text  = ? WHERE message_id = ?";
+        try (Connection connection = ConnectionUtil.getConnection(); )
+        {
+            SocialMediaService service = SocialMediaService.getService();
+            String text         = newMsg.getMessage_text();
+            int posted_by       = newMsg.getPosted_by();
+            long time_posted    = newMsg.getTime_posted_epoch();
 
-        CachedRowSet result = service.execQuery(query, newMsg.getMessage_text(), id);
-        if(result == null) return null;
+            String msg = "Failed adding message: ";
+            if(text.length() > 255)             throw new MessageUpdateException(msg + "Text length too long.");
+            if(text.length() == 0)              throw new MessageUpdateException(msg + "Text cannot be 0.");
+            //if(service.getAccount(posted_by) == null)  throw new MessageUpdateException(msg + "Account does not exist.");
 
-        return this.getMessageById(id);
+
+            PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+
+            statement.setInt(1, posted_by);
+            statement.setString(2, text);
+            statement.setLong(3, time_posted);
+
+            int retVal = statement.executeUpdate();
+            ResultSet keys = statement.getGeneratedKeys();
+            if(keys.next()) {
+                int message_id  = keys.getInt(1);
+
+                return new Message(message_id, posted_by, text, time_posted);
+            }
+        }catch (SQLException sqle)
+        {
+            String msg = "Failed to update message in database with ID ["+id+"]: ";
+            throw new MessageUpdateException(msg + sqle.getMessage());
+        }
+        return null;
     }
     
 }

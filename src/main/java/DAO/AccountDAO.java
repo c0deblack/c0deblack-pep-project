@@ -1,15 +1,20 @@
 package DAO;
 
+import java.rmi.AccessException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Formatter;
 import java.util.List;
+import java.util.Locale;
 
 import javax.sql.rowset.CachedRowSet;
 
+import Exceptions.AccountException;
+import Exceptions.AccountRegistrationException;
 import Model.Account;
 import Service.SocialMediaService;
 import Util.ConnectionUtil;
@@ -20,13 +25,13 @@ public class AccountDAO {
     {
         if(username.length() < 1)       return null;
         if(password.length() < 4)       return null;
-        if(this.userExists(username))   return null;
+        //if(this.userExists(username))   return null;
 
-        try (Connection connection = ConnectionUtil.getConnection(); )
+        try
         {
-            String query = "INSERT INTO account (username, password) VALUES ( ?, ? )";
-    
-            ;
+            Connection connection = ConnectionUtil.getConnection();
+            String query = "INSERT INTO account (username, password) VALUES ( ?, ? );";
+
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
                 
             statement.setString(1, username);
@@ -34,18 +39,19 @@ public class AccountDAO {
     
             int retVal = statement.executeUpdate();
             ResultSet keys = statement.getGeneratedKeys();
-            while(keys.next()) {
-                Integer account_id  = keys.getInt(1);
-    
-                Account ret = new Account(account_id, username, password);
-                return ret;
+            if(keys.next()) {
+                int account_id  = keys.getInt(1);
+
+                return new Account(account_id, username, password);
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
-            throw new Error(sqle.getMessage());
+            StringBuilder sb = new StringBuilder();
+            Formatter formatter = new Formatter(sb, Locale.US);
+
+            formatter.format("Failed to register user with username [%s], and password [%s]: ", username, password);
+            throw new AccountRegistrationException(sb.toString() + sqle.getMessage());
         }
-        
         return null;
     }
 
@@ -53,52 +59,52 @@ public class AccountDAO {
     public Account 
     getAccountInfoById(int id)
     {
-        SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM account WHERE account_id = ? ";
-        CachedRowSet result = service.execQuery(query, id);
-        List<Account> accounts = new ArrayList<>();
-        try
+        try (Connection connection = ConnectionUtil.getConnection(); )
         {
-            while(result.next())
-            {
-                Account returnAccount;
-                returnAccount = new Account(result.getInt("account_id"),
-                                            result.getString("username"),
-                                            result.getString("password"));
-                accounts.add(returnAccount);
+            PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            statement.setInt(1, id);
+
+            ResultSet result = statement.executeQuery();
+            if(result.next()) {
+                return new Account(result.getInt(1),
+                                    result.getString(2),
+                                    result.getString(3));
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
-        }
+            StringBuilder sb = new StringBuilder();
+            Formatter formatter = new Formatter(sb, Locale.US);
 
-        if(accounts.size() > 0) return accounts.get(0);
-        else return null;    
+            formatter.format("Failed to get username with ID %d", id);
+            throw new AccountException(sb.toString() + sqle.getMessage());
+        }
+        return null;
     }
 
 
     public boolean 
     userExists(String username)
     {
-        SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM account WHERE username = ?";
-        CachedRowSet result = service.execQuery(query, username);
-        List<Account> accounts = new ArrayList<>();
-        try
+        try (Connection connection = ConnectionUtil.getConnection(); )
         {
-            while(result.next())
-            {
-                Account returnAccount;
-                returnAccount = new Account(result.getInt("account_id"),
-                                            result.getString("username"),
-                                            result.getString("password"));
-                accounts.add(returnAccount);
+            PreparedStatement statement = connection.prepareStatement(query);
+            statement.setString(1, username);
+
+            ResultSet result = statement.executeQuery();
+            if(result.next()) {
+                return false;
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
+            StringBuilder sb = new StringBuilder();
+            Formatter formatter = new Formatter(sb, Locale.US);
+
+            formatter.format("Failed to check if user exists with username [%s]: ", username);
+            throw new AccountException(sb.toString() + sqle.getMessage());
         }
-        return accounts.size() > 0;
+        return false;
     }
 
 
@@ -107,24 +113,27 @@ public class AccountDAO {
     {
         SocialMediaService service = SocialMediaService.getService();
         String query = "SELECT * FROM account WHERE username = ? AND password = ?";
-        CachedRowSet result = service.execQuery(query, username, password);
-        List<Account> accounts = new ArrayList<>();
-        try
+        try (Connection connection = ConnectionUtil.getConnection(); )
         {
-            while(result.next())
-            {
-                Account returnAccount;
-                returnAccount = new Account(result.getInt("account_id"),
-                                            result.getString("username"),
-                                            result.getString("password"));
-                accounts.add(returnAccount);
+            PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, username);
+            statement.setString(2, password);
+
+            ResultSet result = statement.executeQuery();
+            if(result.next()) {
+                return new Account(result.getInt(1),
+                        result.getString(2),
+                        result.getString(3));
             }
         } catch (SQLException sqle)
         {
-            sqle.printStackTrace();
-        }
+            StringBuilder sb = new StringBuilder();
+            Formatter formatter = new Formatter(sb, Locale.US);
 
-        if(accounts.size() > 0) return accounts.get(0);
-        else return null;
+            String msg = "Failed to check User/Pass Combination with username [%s], and password [%s]: ";
+            formatter.format(msg, username, password);
+            throw new AccountException(sb.toString() + sqle.getMessage());
+        }
+        return null;
     }
 }
