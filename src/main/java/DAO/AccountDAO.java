@@ -5,11 +5,18 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Formatter;
+import java.util.List;
 import java.util.Locale;
 
-import Exceptions.AccountException;
-import Exceptions.AccountRegistrationException;
+import Errors.Account.AddAccountError;
+import Errors.Account.LoginError;
+import Errors.AddError;
+import Errors.ReadError;
+import Exceptions.AccountLoginException;
+import Errors.Account.GetAccountError;
+import Interface.InterfaceDAO;
 import Model.Account;
 import Util.ConnectionUtil;
 
@@ -21,16 +28,50 @@ import Util.ConnectionUtil;
  *
  *   This class provides the following methods:
  *   <pre>
- *       {@link  AccountDAO#registerAccount(String, String)}
- *       {@link  AccountDAO#getAccountInfoById(int)}
- *       {@link  AccountDAO#userExists(String)}
- *       {@link  AccountDAO#getMatchingUserPassCombo(String, String)}
+
  *   </pre>
  */
-public class AccountDAO {
-    public Account 
-    registerAccount(String username, String password)
+public class AccountDAO implements InterfaceDAO<Account> {
+    public Account
+    login(Account account)
+            throws GetAccountError
     {
+        String username = account.getUsername();
+        String password = account.getPassword();
+
+        String query = "SELECT * FROM account WHERE username = ? AND password = ?";
+        try
+        {
+            Connection connection = ConnectionUtil.getConnection();
+            PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, username);
+            statement.setString(2, password);
+
+            ResultSet result = statement.executeQuery();
+            if(result.next()) {
+                return new Account(result.getInt(1),
+                        result.getString(2),
+                        result.getString(3));
+            }
+        } catch (SQLException sqle)
+        {
+            StringBuilder sb = new StringBuilder();
+            Formatter formatter = new Formatter(sb, Locale.US);
+
+            String msg = "Failed to check User/Pass Combination with username [%s], and password [%s]: ";
+            formatter.format(msg, username, password);
+            throw new LoginError(sb + sqle.getMessage());
+        }
+        return null;
+    }
+
+    @Override
+    public Account
+    add(Account account)
+            throws AddAccountError {
+        String username = account.getUsername();
+        String password = account.getPassword();
+
         if(username.length() < 1)       return null;
         if(password.length() < 4)       return null;
 
@@ -55,16 +96,16 @@ public class AccountDAO {
             StringBuilder sb = new StringBuilder();
             Formatter formatter = new Formatter(sb, Locale.US);
 
-            formatter.format("Failed to register user with username [%s], and password [%s]: ", username, password);
-            throw new AccountRegistrationException(sb + sqle.getMessage());
+            formatter.format("SQL error occurred when attempting to register user with username [%s], and password [%s]: ", username, password);
+            throw new AddAccountError(sb + sqle.getMessage());
         }
         return null;
     }
 
-
-    @SuppressWarnings("unused")
+    @Override
     public Account
-    getAccountInfoById(int id)
+    get(int id)
+            throws GetAccountError
     {
         String query = "SELECT * FROM account WHERE account_id = ? ";
         try
@@ -72,62 +113,6 @@ public class AccountDAO {
             Connection connection = ConnectionUtil.getConnection();
             PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
             statement.setInt(1, id);
-
-            ResultSet result = statement.executeQuery();
-            if(result.next()) {
-                return new Account(result.getInt(1),
-                                    result.getString(2),
-                                    result.getString(3));
-            }
-        } catch (SQLException sqle)
-        {
-            StringBuilder sb = new StringBuilder();
-            Formatter formatter = new Formatter(sb, Locale.US);
-
-            formatter.format("Failed to get username with ID %d", id);
-            throw new AccountException(sb + sqle.getMessage());
-        }
-        return null;
-    }
-
-
-    @SuppressWarnings("unused")
-    public boolean
-    userExists(String username)
-    {
-        String query = "SELECT * FROM account WHERE username = ?";
-        try
-        {
-            Connection connection = ConnectionUtil.getConnection();
-            PreparedStatement statement = connection.prepareStatement(query);
-            statement.setString(1, username);
-
-            ResultSet result = statement.executeQuery();
-            if(result.next()) {
-                return false;
-            }
-        } catch (SQLException sqle)
-        {
-            StringBuilder sb = new StringBuilder();
-            Formatter formatter = new Formatter(sb, Locale.US);
-
-            formatter.format("Failed to check if user exists with username [%s]: ", username);
-            throw new AccountException(sb + sqle.getMessage());
-        }
-        return false;
-    }
-
-
-    public Account 
-    getMatchingUserPassCombo(String username, String password)
-    {
-        String query = "SELECT * FROM account WHERE username = ? AND password = ?";
-        try
-        {
-            Connection connection = ConnectionUtil.getConnection();
-            PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
-            statement.setString(1, username);
-            statement.setString(2, password);
 
             ResultSet result = statement.executeQuery();
             if(result.next()) {
@@ -140,10 +125,48 @@ public class AccountDAO {
             StringBuilder sb = new StringBuilder();
             Formatter formatter = new Formatter(sb, Locale.US);
 
-            String msg = "Failed to check User/Pass Combination with username [%s], and password [%s]: ";
-            formatter.format(msg, username, password);
-            throw new AccountException(sb + sqle.getMessage());
+            formatter.format("SQL error occurred while getting username with ID %d", id);
+            throw new GetAccountError(sb + sqle.getMessage());
         }
+        return null;
+    }
+
+    @Override
+    public List<Account>
+    getAll()
+            throws GetAccountError {
+        List<Account> outputList = new ArrayList<>();
+
+        String query = "SELECT * FROM account;";
+        try
+        {
+            Connection connection = ConnectionUtil.getConnection();
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            ResultSet result = statement.executeQuery();
+            if(result.next()) {
+                int id = result.getInt(1);
+                String username = result.getString(2);
+                String password = result.getString(3);
+                outputList.add(new Account(id, username, password));
+            }
+        } catch (SQLException sqle)
+        {
+            String msg = "SQL error occurred while getting a list of users: ";
+            throw new GetAccountError(msg + sqle.getMessage());
+        }
+        return outputList;
+    }
+
+    @Override
+    public Account update(Account account) {
+        // TODO: Add AccountDAO.update()
+        return null;
+    }
+
+    @Override
+    public Account delete(Account account) {
+        // TODO: Add AccountDAO.delete()
         return null;
     }
 }

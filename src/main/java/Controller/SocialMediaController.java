@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import Repository.SocialMediaRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import Model.Account;
 import Model.Message;
-import Service.SocialMediaService;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 
@@ -33,7 +33,7 @@ import io.javalin.http.Context;
  * </pre>
  */
 public class SocialMediaController {
-    SocialMediaService service = SocialMediaService.getService();
+    SocialMediaRepository repository = SocialMediaRepository.getRepository();
     /**
      * In order for the test cases to work, you will need to write the endpoints in the startAPI() method, as the test
      * suite must receive a Javalin object from this method.
@@ -60,15 +60,20 @@ public class SocialMediaController {
     throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
-        Account recieved = mapper.readValue(context.body(), Account.class);
-        Account output = service.registerAccount(recieved.getUsername(), recieved.getPassword());
+        Account received = mapper.readValue(context.body(), Account.class);
 
-        if(output == null) context.status(400);
-        else 
+        if(repository.checkIfUserExist(received.username) == null)
         {
-            context.json(mapper.writeValueAsString(output));
-            context.status(200);
+            Account output = repository.processNewAccount(received.getUsername(), received.getPassword());
+
+            if(output != null)
+            {
+                context.json(mapper.writeValueAsString(output));
+                context.status(200);
+                return;
+            }
         }
+        context.status(400);
     }
 
 
@@ -77,8 +82,8 @@ public class SocialMediaController {
     throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
-        Account recieved = mapper.readValue(context.body(), Account.class);
-        Account output = service.login(recieved.getUsername(), recieved.getPassword());
+        Account received = mapper.readValue(context.body(), Account.class);
+        Account output = repository.processLogin(received);
 
         if(output == null) context.status(401);
         else 
@@ -94,8 +99,8 @@ public class SocialMediaController {
     throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
-        Message recieved = mapper.readValue(context.body(), Message.class);
-        Message output = service.addMessage(recieved);
+        Message received = mapper.readValue(context.body(), Message.class);
+        Message output = repository.processNewMessage(received);
 
         if(output == null) context.status(400);
         else 
@@ -111,7 +116,7 @@ public class SocialMediaController {
     throws JsonProcessingException
     {
         ObjectMapper mapper = new ObjectMapper();
-        List<Message> output = service.getMessages();
+        List<Message> output = repository.getAllMessages();
 
         context.json(mapper.writeValueAsString(
                 Objects.requireNonNullElseGet(output, () -> new ArrayList<Message>())));
@@ -125,7 +130,7 @@ public class SocialMediaController {
     {
         ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("message_id");
-        Message output = service.getMessage(Integer.parseInt(id));
+        Message output = repository.getSingleMessage(Integer.parseInt(id));
 
         if(output != null)
             context.json(mapper.writeValueAsString(output));
@@ -139,7 +144,7 @@ public class SocialMediaController {
     {
         ObjectMapper mapper = new ObjectMapper();
         String id = context.pathParam("message_id");
-        Message output = service.deleteMessage(Integer.parseInt(id));
+        Message output = repository.processDeleteMessage(Integer.parseInt(id));
 
         if(output != null)
             context.json(mapper.writeValueAsString(output));
@@ -154,7 +159,8 @@ public class SocialMediaController {
         ObjectMapper mapper = new ObjectMapper();
         Message received = mapper.readValue(context.body(), Message.class);
         int id = Integer.parseInt(context.pathParam("message_id"));
-        Message output = service.updateMessage(id, received);
+        received.setMessage_id(id);
+        Message output = repository.processUpdateMessage(received);
 
         if(output == null)
         {
@@ -172,7 +178,7 @@ public class SocialMediaController {
     getMessagesByUser(Context context)
     {
         String id = context.pathParam("account_id");
-        List<Message> output = service.getMessagesByUser(Integer.parseInt(id));
+        List<Message> output = repository.getMessagesFromUser(Integer.parseInt(id));
 
         context.json(Objects.requireNonNullElseGet(output, () -> new ArrayList<Message>()));
 
