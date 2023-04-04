@@ -40,7 +40,13 @@ public class SocialMediaController {
      * @return a Javalin app object which defines the behavior of the Javalin controller.
      */
     public Javalin startAPI() {
-        Javalin app = Javalin.create();
+        Javalin app = Javalin.create(config -> {
+            config.plugins.enableCors(cors -> {
+                cors.add(it -> {
+                    it.reflectClientOrigin = true;
+                });
+            });
+        });
 
         app.post("/register", this::register);
         app.post("/login", this::login);
